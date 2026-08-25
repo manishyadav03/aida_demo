@@ -1,0 +1,125 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AIDA Voice Banking Agent Tools",
+  "description": "JSON Schema function declarations for Enterprise Bot AIDA tool calling integration (SessionToken secured)",
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "authenticate_customer",
+        "description": "Authenticates a customer using their bank Account Number and 4-digit PIN. Returns a short-lived sessionToken. MUST be invoked before accessing customer account details or performing banking operations.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "accountNumber": {
+              "type": "string",
+              "description": "The customer's bank account number (e.g., '100001')."
+            },
+            "pin": {
+              "type": "string",
+              "description": "The customer's 4-digit security PIN."
+            }
+          },
+          "required": ["accountNumber", "pin"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "get_account_balance",
+        "description": "Fetches the current account balance and currency for the authenticated customer using their sessionToken.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "sessionToken": {
+              "type": "string",
+              "description": "The active session token obtained from authenticate_customer."
+            }
+          },
+          "required": ["sessionToken"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "block_customer_card",
+        "description": "Blocks a lost or stolen credit/debit card belonging to the authenticated customer using an atomic transaction and generates a reference ticket.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "sessionToken": {
+              "type": "string",
+              "description": "The active session token obtained from authenticate_customer."
+            },
+            "cardLast4": {
+              "type": "string",
+              "description": "The last 4 digits of the card to be blocked (e.g., '4821')."
+            },
+            "reason": {
+              "type": "string",
+              "description": "The reason for blocking the card (e.g., 'stolen', 'lost', 'suspicious activity')."
+            }
+          },
+          "required": ["sessionToken", "cardLast4", "reason"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "update_user_action_data",
+        "description": "Updates non-sensitive customer metadata such as lastAction, lastTicketNumber, or phone number.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "sessionToken": {
+              "type": "string",
+              "description": "The active session token obtained from authenticate_customer."
+            },
+            "data": {
+              "type": "object",
+              "properties": {
+                "lastAction": {
+                  "type": "string",
+                  "description": "The last action taken by the customer (e.g., 'CARD_BLOCK')."
+                },
+                "lastTicketNumber": {
+                  "type": "string",
+                  "description": "The reference ticket number associated with the action."
+                },
+                "phone": {
+                  "type": "string",
+                  "description": "Customer contact phone number."
+                }
+              }
+            }
+          },
+          "required": ["sessionToken", "data"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "send_card_block_confirmation_email",
+        "description": "Dispatches an email confirmation via Resend to the authenticated customer with their card block reference ticket.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "sessionToken": {
+              "type": "string",
+              "description": "The active session token obtained from authenticate_customer."
+            },
+            "ticketNumber": {
+              "type": "string",
+              "description": "The reference ticket number generated from the block_customer_card operation."
+            }
+          },
+          "required": ["sessionToken", "ticketNumber"]
+        }
+      }
+    }
+  ]
+}

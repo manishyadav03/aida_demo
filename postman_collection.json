@@ -1,0 +1,255 @@
+{
+  "info": {
+    "_postman_id": "aida-voice-banking-tools-v2",
+    "name": "AIDA Voice Banking Assistant Toolset (Token & Transaction Enhanced)",
+    "description": "Production-grade API / Tool endpoints for Enterprise Bot AIDA voice banking assistant integration, featuring short-lived sessionToken authentication and atomic MongoDB card blocking.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000",
+      "type": "string"
+    },
+    {
+      "key": "sessionToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "ticketNumber",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "0. Health Check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/health",
+          "host": ["{{baseUrl}}"],
+          "path": ["health"]
+        },
+        "description": "Checks the operational status of the Voice Banking API."
+      },
+      "response": []
+    },
+    {
+      "name": "1. Authenticate Customer",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const jsonData = pm.response.json();",
+              "if (jsonData.success && jsonData.sessionToken) {",
+              "    pm.collectionVariables.set('sessionToken', jsonData.sessionToken);",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"accountNumber\": \"100001\",\n  \"pin\": \"1234\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/tools/authenticate",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "tools", "authenticate"]
+        },
+        "description": "Authenticates customer with Account Number and PIN. Returns a short-lived sessionToken. Does not return balance or PIN."
+      },
+      "response": []
+    },
+    {
+      "name": "1b. Authenticate - Invalid PIN (Failure)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"accountNumber\": \"100001\",\n  \"pin\": \"9999\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/tools/authenticate",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "tools", "authenticate"]
+        },
+        "description": "Tests rejection when wrong PIN is supplied."
+      },
+      "response": []
+    },
+    {
+      "name": "2. Get Account Balance",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{sessionToken}}",
+            "type": "text"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/tools/balance",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "tools", "balance"]
+        },
+        "description": "Fetches balance for the caller identified by the sessionToken in Authorization header."
+      },
+      "response": []
+    },
+    {
+      "name": "3. Block Card (Atomic Transaction)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const jsonData = pm.response.json();",
+              "if (jsonData.success && jsonData.ticketNumber) {",
+              "    pm.collectionVariables.set('ticketNumber', jsonData.ticketNumber);",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{sessionToken}}",
+            "type": "text"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"cardLast4\": \"4821\",\n  \"reason\": \"stolen while traveling\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/tools/block-card",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "tools", "block-card"]
+        },
+        "description": "Blocks card belonging to customer via MongoDB transaction, records reason, updates account, and generates ticket."
+      },
+      "response": []
+    },
+    {
+      "name": "3b. Block Card - Already Blocked (Failure)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{sessionToken}}",
+            "type": "text"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"cardLast4\": \"4821\",\n  \"reason\": \"lost\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/tools/block-card",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "tools", "block-card"]
+        },
+        "description": "Verifies that blocking an already blocked card returns 400 CARD_ALREADY_BLOCKED."
+      },
+      "response": []
+    },
+    {
+      "name": "4. Update User Profile Data",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{sessionToken}}",
+            "type": "text"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"data\": {\n    \"lastAction\": \"CARD_BLOCK\",\n    \"lastTicketNumber\": \"{{ticketNumber}}\"\n  }\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/tools/update-user",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "tools", "update-user"]
+        },
+        "description": "Updates whitelisted fields on customer profile. Rejects updates to balance, PIN, or accountNumber."
+      },
+      "response": []
+    },
+    {
+      "name": "5. Send Confirmation Email",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{sessionToken}}",
+            "type": "text"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"ticketNumber\": \"{{ticketNumber}}\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/tools/send-confirmation-email",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "tools", "send-confirmation-email"]
+        },
+        "description": "Sends customer confirmation email via Resend containing name and ticket details."
+      },
+      "response": []
+    }
+  ]
+}
